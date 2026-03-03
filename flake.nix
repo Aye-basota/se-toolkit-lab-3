@@ -15,23 +15,32 @@
       systems = import inputs.systems;
       perSystem =
         { pkgs, ... }:
+        let
+          python = pkgs.python3.withPackages (ps: [ ps.pydantic ]);
+        in
         {
           devshells.default = {
+            bash.extra = ''
+              export ROOT_DIR="$(pwd)"
+            '';
             commandGroups = {
               lint = [
                 {
                   name = "find-broken-links";
                   command = ''
                     ${pkgs.lib.getExe pkgs.lychee} \
+                      --include-fragments \
                       --offline \
                       --no-progress \
                       --exclude-path '.venv' \
                       --exclude-path '.direnv' \
                       --root-dir . \
                       --cache \
-                      '**/*.md'
+                      --format json \
+                      "$ROOT_DIR"/'**/*.md' \
+                      | ${pkgs.lib.getExe python} ${./instructors/scripts/find-broken-links/post-process-lychee.py}
                   '';
-                  help = "Find all broken links in all Markdown files";
+                  help = "Find all broken links in all Markdown files (with file:line locations)";
                 }
                 {
                   name = "lint-docs";
